@@ -387,6 +387,7 @@ function renderReport(rows){
     tendance:String(r['Tendance']||r['tendance']||''),
     insuline:parseFloat(r['Total insuline (U)']||r['total_insuline']||r['Total insuline']||0),
     bonus:String(r['Bonus/Malus']||r['bonus']||''),
+    insuline_lente:parseFloat(r['Insuline lente (U)']||r['insuline_lente']||0),
     activite:String(r['Activité']||r['activite']||''),
     repas:String(r['Repas']||r['repas']||''),
     notes:String(r['Notes']||r['notes']||'')
@@ -401,6 +402,7 @@ function renderReport(rows){
     const div=document.createElement('div');
     div.style.cssText='border-bottom:1px solid var(--border);padding:.85rem 0;'+(i===0?'':'');
     const insStr=r.insuline?(r.insuline+'U'+(r.bonus?' ('+r.bonus+')':'')):'—';
+    const lentStr=r.insuline_lente>0?r.insuline_lente+'U':'';
     const tc={Stable:'pill-s',Baisse:'pill-b',Hausse:'pill-h','Forte Baisse':'pill-sb','Forte Hausse':'pill-sh'}[r.tendance]||'';
     div.innerHTML=`
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem">
@@ -410,7 +412,7 @@ function renderReport(rows){
       <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:.35rem">
         <span style="font-family:'DM Mono',monospace;font-size:28px;font-weight:600;color:var(--text)">${r.glycemie||'—'}</span>
         <span style="font-size:12px;color:var(--muted)">mg/dL</span>
-        <span style="font-size:13px;color:var(--purple);margin-left:auto">💉 ${insStr}</span>
+        <span style="font-size:13px;color:var(--purple);margin-left:auto">💉 ${insStr}${lentStr?' &nbsp;🌙 '+lentStr:''}</span>
       </div>
       ${r.repas?`<div style="font-size:12px;color:var(--muted);margin-bottom:.25rem">🍽 ${r.repas}</div>`:''}
       ${r.activite?`<div style="font-size:12px;color:var(--muted);margin-bottom:.25rem">🏃 ${r.activite}</div>`:''}
