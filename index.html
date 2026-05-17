@@ -220,39 +220,22 @@ tr:hover td{background:var(--surface2)}
     <div id="report-error" class="status err" style="margin-bottom:1rem"></div>
 
     <div id="report-content" style="display:none">
-      <div class="stat-grid" id="stat-grid"></div>
-
-      <div class="card">
-        <div class="sc-title"><span class="dot"></span> Courbe glycémie (mg/dL) — 30 dernières mesures</div>
-        <div class="chart-wrap"><canvas id="chartGlycemie"></canvas></div>
-        <div class="chart-legend">
-          <span style="color:var(--red)">● Forte baisse / hausse</span>
-          <span style="color:var(--amber)">● Baisse / Hausse</span>
-          <span style="color:var(--green)">● Stable</span>
-        </div>
+      <div class="card" style="text-align:center;padding:1.5rem">
+        <div class="sc-title" style="justify-content:center">Moyenne glycémie</div>
+        <span id="avg-gly" style="font-family:'DM Mono',monospace;font-size:48px;font-weight:600;color:var(--accent)">—</span>
+        <span style="font-size:14px;color:var(--muted);margin-left:6px">mg/dL</span>
       </div>
-
-      <div class="card">
-        <div class="sc-title"><span class="dot"></span> Insuline rapide totale par jour (U) — 14 derniers jours</div>
-        <div class="chart-wrap"><canvas id="chartInsuline"></canvas></div>
-      </div>
-
       <div class="card">
         <div class="sc-title"><span class="dot"></span> Dernières entrées</div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Date</th><th>Heure</th><th>Glycémie</th><th>Tendance</th><th>Insuline</th><th>Activité</th></tr></thead>
-            <tbody id="entries-body"></tbody>
-          </table>
-        </div>
+        <div id="entries-list"></div>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-const WEBHOOK_POST = 'https://script.google.com/macros/s/AKfycbzG8OtXjFizH2Ev5nGv6xFcj6uGBGw4SYnd6TQ2umbL5tSqcmtU8wChYOWQGkosWFuf/exec';
-const WEBHOOK_GET  = 'https://script.google.com/macros/s/AKfycbzG8OtXjFizH2Ev5nGv6xFcj6uGBGw4SYnd6TQ2umbL5tSqcmtU8wChYOWQGkosWFuf/exec';
+const WEBHOOK_POST = 'https://script.google.com/macros/s/AKfycbzHsAVfuYnNPLyoQVaUlid0BfVU2QLCIjAjB5WxDWH6vSnwQustraA5K8IXR7ktZiCv/exec';
+const WEBHOOK_GET  = 'https://script.google.com/macros/s/AKfycbxjS5XBRZL_PzFJFGOoKQGsQZNdBbfJSZzu9-us0DDNvdqwcGYvpxAMqDSQyku1SOhA/exec';
 
 let selectedTrend='', meals=[], slowEnabled=false, chartGly=null, chartIns=null;
 
@@ -365,6 +348,13 @@ function trendPill(t){
   return`<span class="pill ${cls}">${t}</span>`;
 }
 
+function formatDate(date, heure){
+  if(!date)return'—';
+  const d=date.replace(/^\d{4}-/,'');
+  const h=heure?heure.slice(0,5):'';
+  return h?d+' '+h:d;
+}
+
 function renderReport(rows){
   const data=rows.map(r=>({
     date:String(r['Date']||r['date']||''),
@@ -372,52 +362,37 @@ function renderReport(rows){
     glycemie:parseFloat(r['Glycémie (mg/dL)']||r['glycemie']||r['Glycemie']||0),
     tendance:String(r['Tendance']||r['tendance']||''),
     insuline:parseFloat(r['Total insuline (U)']||r['total_insuline']||r['Total insuline']||0),
-    insuline_lente:parseFloat(r['Insuline lente (U)']||r['insuline_lente']||0),
+    bonus:String(r['Bonus/Malus']||r['bonus']||''),
     activite:String(r['Activité']||r['activite']||''),
     repas:String(r['Repas']||r['repas']||''),
     notes:String(r['Notes']||r['notes']||'')
   })).filter(r=>r.date&&r.date.match(/\d{4}/));
 
   const gv=data.map(r=>r.glycemie).filter(v=>v>0);
-  const iv=data.map(r=>r.insuline).filter(v=>v>0);
-  const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):'—';
-  const avgIns=iv.length?(Math.round(iv.reduce((a,b)=>a+b,0)/iv.length*10)/10):'—';
+  const avg=gv.length?Math.round(gv.reduce((a,b)=>a+b,0)/gv.length):'—';
+  document.getElementById('avg-gly').textContent=avg;
 
-  document.getElementById('stat-grid').innerHTML=`
-    <div class="stat-card blue"><span class="s-val">${avg(gv)}</span><span class="s-lbl">Moy. glycémie</span></div>
-    <div class="stat-card green"><span class="s-val">${gv.length?Math.min(...gv):'—'}</span><span class="s-lbl">Min glycémie</span></div>
-    <div class="stat-card red"><span class="s-val">${gv.length?Math.max(...gv):'—'}</span><span class="s-lbl">Max glycémie</span></div>
-    <div class="stat-card amber"><span class="s-val">${avgIns}</span><span class="s-lbl">Moy. insuline / entrée</span></div>
-    <div class="stat-card purple"><span class="s-val">${data.length}</span><span class="s-lbl">Entrées totales</span></div>
-    <div class="stat-card blue"><span class="s-val">${data.filter(r=>r.insuline_lente>0).length}</span><span class="s-lbl">Prises insuline lente</span></div>
-  `;
-
-  const glyData=data.filter(r=>r.glycemie>0).slice(-30);
-  if(chartGly)chartGly.destroy();
-  chartGly=new Chart(document.getElementById('chartGlycemie').getContext('2d'),{
-    type:'line',
-    data:{
-      labels:glyData.map(r=>(r.date.slice(5)||r.date)+(r.heure?' '+r.heure.slice(0,5):'')),
-      datasets:[{data:glyData.map(r=>r.glycemie),borderColor:'#4f8ef7',backgroundColor:'rgba(79,142,247,0.08)',borderWidth:2,pointBackgroundColor:glyData.map(r=>trendColor(r.tendance)),pointBorderColor:glyData.map(r=>trendColor(r.tendance)),pointRadius:5,tension:0.3,fill:true}]
-    },
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#7a7f9a',font:{size:10},maxRotation:45},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#7a7f9a',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'},min:glyData.length?Math.max(0,Math.min(...glyData.map(r=>r.glycemie))-20):0}}}
-  });
-
-  const byDay={};
-  data.forEach(r=>{if(r.date){byDay[r.date]=(byDay[r.date]||0)+r.insuline}});
-  const dk=Object.keys(byDay).sort().slice(-14);
-  if(chartIns)chartIns.destroy();
-  chartIns=new Chart(document.getElementById('chartInsuline').getContext('2d'),{
-    type:'bar',
-    data:{labels:dk.map(d=>d.slice(5)),datasets:[{data:dk.map(d=>Math.round(byDay[d]*10)/10),backgroundColor:'rgba(167,139,250,0.45)',borderColor:'#a78bfa',borderWidth:1,borderRadius:5}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#7a7f9a',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#7a7f9a',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'},beginAtZero:true}}}
-  });
-
-  const tbody=document.getElementById('entries-body');tbody.innerHTML='';
-  [...data].reverse().slice(0,20).forEach(r=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${r.date||'—'}</td><td style="font-family:'DM Mono',monospace;font-size:12px">${r.heure||'—'}</td><td style="font-family:'DM Mono',monospace;font-weight:500">${r.glycemie||'—'}</td><td>${trendPill(r.tendance)}</td><td style="font-family:'DM Mono',monospace">${r.insuline||'—'} U</td><td style="color:var(--muted);font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.activite||'—'}</td>`;
-    tbody.appendChild(tr);
+  const list=document.getElementById('entries-list');list.innerHTML='';
+  [...data].reverse().slice(0,30).forEach((r,i)=>{
+    const div=document.createElement('div');
+    div.style.cssText='border-bottom:1px solid var(--border);padding:.85rem 0;'+(i===0?'':'');
+    const insStr=r.insuline?(r.insuline+'U'+(r.bonus?' ('+r.bonus+')':'')):'—';
+    const tc={Stable:'pill-s',Baisse:'pill-b',Hausse:'pill-h','Forte Baisse':'pill-sb','Forte Hausse':'pill-sh'}[r.tendance]||'';
+    div.innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem">
+        <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--muted)">${formatDate(r.date,r.heure)}</span>
+        ${r.tendance?`<span class="pill ${tc}" style="font-size:11px">${r.tendance}</span>`:''}
+      </div>
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:.35rem">
+        <span style="font-family:'DM Mono',monospace;font-size:28px;font-weight:600;color:var(--text)">${r.glycemie||'—'}</span>
+        <span style="font-size:12px;color:var(--muted)">mg/dL</span>
+        <span style="font-size:13px;color:var(--purple);margin-left:auto">💉 ${insStr}</span>
+      </div>
+      ${r.repas?`<div style="font-size:12px;color:var(--muted);margin-bottom:.25rem">🍽 ${r.repas}</div>`:''}
+      ${r.activite?`<div style="font-size:12px;color:var(--muted);margin-bottom:.25rem">🏃 ${r.activite}</div>`:''}
+      ${r.notes?`<div style="font-size:12px;color:var(--hint);font-style:italic">📝 ${r.notes}</div>`:''}
+    `;
+    list.appendChild(div);
   });
 
   document.getElementById('report-loading').style.display='none';
