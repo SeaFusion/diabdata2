@@ -46,6 +46,12 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="time"]::-webki
 .meal-item input{font-size:14px;padding:8px 10px}
 .rm-btn{width:32px;height:36px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;color:var(--hint);font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
 .rm-btn:hover{background:var(--red-soft);border-color:rgba(247,111,111,.3);color:var(--red)}
+.mic-btn{width:32px;height:36px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;color:var(--muted);font-size:15px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.mic-btn:hover{border-color:var(--accent-border);color:var(--accent)}
+.mic-btn.recording{background:var(--red-soft);border-color:rgba(247,111,111,.5);color:var(--red);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.meal-item{display:grid;grid-template-columns:1fr 90px 32px 32px;gap:8px;align-items:center;margin-bottom:6px}
+.meal-header{display:grid;grid-template-columns:1fr 90px 32px 32px;gap:8px;margin-bottom:4px}
 .add-meal-btn{width:100%;background:transparent;border:1px dashed var(--border2);border-radius:var(--radius);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;margin-top:2px}
 .add-meal-btn:hover{background:var(--surface2);color:var(--text);border-style:solid}
 .total-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:var(--radius);padding:.75rem 1rem;margin-top:.75rem;border:1px solid var(--border)}
@@ -153,7 +159,7 @@ tr:hover td{background:var(--surface2)}
 
     <div class="card">
       <div class="card-title"><span class="dot"></span> Repas & insuline rapide</div>
-      <div class="meal-header"><span>Aliment</span><span>Insuline (U)</span><span></span></div>
+      <div class="meal-header"><span>Aliment</span><span>Insuline (U)</span><span></span><span></span></div>
       <div id="meal-list"></div>
       <button class="add-meal-btn" onclick="addMeal()">+ Ajouter un aliment</button>
       <div class="sep"></div>
@@ -259,16 +265,53 @@ function init() {
 function updateSlowTime(){document.getElementById('slow-time-display').textContent=document.getElementById('time').value||'—'}
 function toggleSlow(){slowEnabled=!slowEnabled;document.getElementById('slow-toggle').className='toggle'+(slowEnabled?' on':'');document.getElementById('slow-panel').className='slow-panel'+(slowEnabled?' visible':'')}
 function selectTrend(btn){document.querySelectorAll('.trend-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');selectedTrend=btn.dataset.val}
-function addMeal(){meals.push({id:Date.now(),name:'',insulin:''});renderMeals()}
-function removeMeal(id){meals=meals.filter(m=>m.id!==id);renderMeals();updateTotal()}
+function createMealRow(m){
+  const d=document.createElement('div');
+  d.className='meal-item';
+  d.id='meal-row-'+m.id;
+
+  const nameInput=document.createElement('input');
+  nameInput.type='text'; nameInput.placeholder="Nom de l'aliment";
+  nameInput.id='meal-name-'+m.id; nameInput.value=m.name;
+  nameInput.oninput=()=>{updateMeal(m.id,'name',nameInput.value)};
+
+  const insInput=document.createElement('input');
+  insInput.type='number'; insInput.placeholder='0'; insInput.min='0'; insInput.step='1';
+  insInput.id='meal-ins-'+m.id; insInput.value=m.insulin;
+  insInput.style.textAlign='right';
+  insInput.oninput=()=>{updateMeal(m.id,'insulin',insInput.value)};
+
+  const micBtn=document.createElement('button');
+  micBtn.className='mic-btn'; micBtn.id='mic-'+m.id; micBtn.title='Dicter';
+  micBtn.textContent='🎤';
+  micBtn.onclick=()=>startVoice(m.id);
+
+  const rmBtn=document.createElement('button');
+  rmBtn.className='rm-btn'; rmBtn.textContent='✕';
+  rmBtn.onclick=()=>removeMeal(m.id);
+
+  d.appendChild(nameInput); d.appendChild(insInput);
+  d.appendChild(micBtn); d.appendChild(rmBtn);
+  return d;
+}
+
+function addMeal(){
+  const m={id:Date.now(),name:'',insulin:''};
+  meals.push(m);
+  document.getElementById('meal-list').appendChild(createMealRow(m));
+  updateTotal();
+}
+
+function removeMeal(id){
+  meals=meals.filter(m=>m.id!==id);
+  const row=document.getElementById('meal-row-'+id);
+  if(row)row.remove();
+  updateTotal();
+}
 
 function renderMeals(){
   const c=document.getElementById('meal-list');c.innerHTML='';
-  meals.forEach(m=>{
-    const d=document.createElement('div');d.className='meal-item';
-    d.innerHTML=`<input type="text" placeholder="Nom de l'aliment" value="${m.name}" oninput="updateMeal(${m.id},'name',this.value)"><input type="number" placeholder="0" min="0" step="1" value="${m.insulin}" oninput="updateMeal(${m.id},'insulin',this.value)" style="text-align:right"><button class="rm-btn" onclick="removeMeal(${m.id})">✕</button>`;
-    c.appendChild(d);
-  });
+  meals.forEach(m=>c.appendChild(createMealRow(m)));
 }
 
 function updateMeal(id,field,val){const m=meals.find(m=>m.id===id);if(m)m[field]=val;updateTotal()}
@@ -423,6 +466,40 @@ function renderReport(rows){
 
   document.getElementById('report-loading').style.display='none';
   document.getElementById('report-content').style.display='block';
+}
+
+let activeRecognition = null;
+
+function startVoice(id){
+  if(!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)){
+    alert('Reconnaissance vocale non supportée sur ce navigateur. Utilisez Chrome ou Edge.');
+    return;
+  }
+  const btn=document.getElementById('mic-'+id);
+  // Stop if already recording this mic
+  if(activeRecognition){activeRecognition.stop();activeRecognition=null;return;}
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const rec=new SR();
+  rec.lang='fr-FR';
+  rec.continuous=false;
+  rec.interimResults=false;
+  activeRecognition=rec;
+  btn.classList.add('recording');
+  btn.textContent='⏹';
+  rec.onresult=e=>{
+    const text=e.results[0][0].transcript;
+    const inp=document.getElementById('meal-name-'+id);
+    inp.value=text;
+    updateMeal(id,'name',text);
+  };
+  rec.onerror=e=>{
+    console.error('Speech error',e.error);
+    btn.classList.remove('recording');btn.textContent='🎤';activeRecognition=null;
+  };
+  rec.onend=()=>{
+    btn.classList.remove('recording');btn.textContent='🎤';activeRecognition=null;
+  };
+  rec.start();
 }
 
 init();
