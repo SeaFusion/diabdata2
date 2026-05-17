@@ -251,8 +251,8 @@ tr:hover td{background:var(--surface2)}
 </div>
 
 <script>
-const WEBHOOK_POST = 'https://script.google.com/macros/s/AKfycbxjS5XBRZL_PzFJFGOoKQGsQZNdBbfJSZzu9-us0DDNvdqwcGYvpxAMqDSQyku1SOhA/exec';
-const WEBHOOK_GET  = 'https://script.google.com/macros/s/AKfycbxjS5XBRZL_PzFJFGOoKQGsQZNdBbfJSZzu9-us0DDNvdqwcGYvpxAMqDSQyku1SOhA/exec';
+const WEBHOOK_POST = 'https://script.google.com/macros/s/AKfycbzG8OtXjFizH2Ev5nGv6xFcj6uGBGw4SYnd6TQ2umbL5tSqcmtU8wChYOWQGkosWFuf/exec';
+const WEBHOOK_GET  = 'https://script.google.com/macros/s/AKfycbzG8OtXjFizH2Ev5nGv6xFcj6uGBGw4SYnd6TQ2umbL5tSqcmtU8wChYOWQGkosWFuf/exec';
 
 let selectedTrend='', meals=[], slowEnabled=false, chartGly=null, chartIns=null;
 
@@ -337,9 +337,11 @@ async function loadReport(){
   document.getElementById('report-content').style.display='none';
   document.getElementById('report-error').style.display='none';
   try{
-    const res=await fetch(WEBHOOK_GET);
+    const proxy='https://corsproxy.io/?url='+encodeURIComponent(WEBHOOK_GET);
+    const res=await fetch(proxy);
     if(!res.ok)throw new Error('HTTP '+res.status);
-    const rows=await res.json();
+    let rows=await res.json();
+    if(typeof rows==='string')rows=JSON.parse(rows);
     if(!rows.length){showReportErr('Aucune donnée dans le Google Sheet.');return}
     renderReport(rows);
   }catch(e){showReportErr('Impossible de charger : '+e.message)}
