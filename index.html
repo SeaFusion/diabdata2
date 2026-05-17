@@ -234,8 +234,8 @@ tr:hover td{background:var(--surface2)}
 </div>
 
 <script>
-const WEBHOOK_POST = 'https://script.google.com/macros/s/AKfycbwauRwN1pkn2OXDrCcXZUJwn0lRayra_dfoMx7_m8tS8SsSJfltV9eol5ClAewyydhR/exec';
-const WEBHOOK_GET  = 'https://script.google.com/macros/s/AKfycbwauRwN1pkn2OXDrCcXZUJwn0lRayra_dfoMx7_m8tS8SsSJfltV9eol5ClAewyydhR/exec';
+const WEBHOOK_POST = 'https://script.google.com/macros/s/AKfycbzHsAVfuYnNPLyoQVaUlid0BfVU2QLCIjAjB5WxDWH6vSnwQustraA5K8IXR7ktZiCv/exec';
+const WEBHOOK_GET  = 'https://script.google.com/macros/s/AKfycbxjS5XBRZL_PzFJFGOoKQGsQZNdBbfJSZzu9-us0DDNvdqwcGYvpxAMqDSQyku1SOhA/exec';
 
 let selectedTrend='', meals=[], slowEnabled=false, chartGly=null, chartIns=null;
 
@@ -350,8 +350,21 @@ function trendPill(t){
 
 function formatDate(date, heure){
   if(!date)return'—';
-  const d=date.replace(/^\d{4}-/,'');
-  const h=heure?heure.slice(0,5):'';
+  // Nettoyer les dates longues type "Sun May 17 2026 00:00:00 GMT+..."
+  let d=date, h=heure?String(heure).slice(0,5):'';
+  // Si la date contient un espace (format long JS ou "yyyy-MM-dd HH:mm")
+  if(d.includes(' ')){
+    const parts=d.split(' ');
+    // Format "yyyy-MM-dd HH:mm" déjà correct
+    if(parts[0].match(/^\d{4}-\d{2}-\d{2}$/)){
+      h=h||parts[1]||'';
+      d=parts[0];
+    } else {
+      // Format long JS — on parse
+      try{const dt=new Date(d);if(!isNaN(dt)){d=dt.toISOString().slice(0,10);if(!h){h=dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}}}catch(e){}
+    }
+  }
+  // Format court : enlever l'année si c'est l'année courante, sinon garder yyyy-MM-dd
   return h?d+' '+h:d;
 }
 
