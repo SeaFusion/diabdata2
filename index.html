@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suivi Diabète</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);--text:#eef0f6;--muted:#7a7f9a;--hint:#4a4f66;--accent:#4f8ef7;--accent-soft:rgba(79,142,247,0.12);--accent-border:rgba(79,142,247,0.35);--green:#3ecf8e;--green-soft:rgba(62,207,142,0.1);--red:#f76f6f;--red-soft:rgba(247,111,111,0.1);--amber:#f7b24f;--amber-soft:rgba(247,178,79,0.1);--purple:#a78bfa;--radius:10px;--radius-lg:16px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem 1rem}
+.page{max-width:640px;margin:0 auto}
+header{display:flex;align-items:center;gap:14px;margin-bottom:1.5rem}
+.logo{width:42px;height:42px;background:var(--accent-soft);border:1px solid var(--accent-border);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px}
+h1{font-size:20px;font-weight:600;letter-spacing:-.02em}
+h1 span{color:var(--muted);font-weight:400;font-size:14px;display:block;margin-top:1px}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:4px;margin-bottom:1.5rem}
+.tab{flex:1;padding:.6rem;border:none;background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;border-radius:10px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.tab:hover{color:var(--text)}
+.tab.active{background:var(--surface2);color:var(--text);border:1px solid var(--border2)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:1rem;transition:border-color .2s}
+.card:focus-within{border-color:var(--border2)}
+.card-title{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;gap:7px}
+.card-title .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.5}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:.85rem}
+.row:last-child{margin-bottom:0}
+.field{display:flex;flex-direction:column;gap:5px}
+label{font-size:12px;color:var(--muted);font-weight:500}
+input[type="text"],input[type="number"],input[type="date"],input[type="time"],input[type="url"],textarea{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;padding:9px 12px;outline:none;transition:border-color .2s,background .2s;width:100%}
+input:focus,textarea:focus{border-color:var(--accent-border);background:rgba(79,142,247,.04)}
+input[type="number"]{font-family:'DM Mono',monospace}
+textarea{resize:vertical;min-height:80px;line-height:1.6}
+input[type="date"]::-webkit-calendar-picker-indicator,input[type="time"]::-webkit-calendar-picker-indicator{filter:invert(.5);cursor:pointer}
+.trend-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:4px}
+.trend-btn{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;padding:8px 4px;text-align:center;color:var(--muted);transition:all .15s;font-family:'DM Sans',sans-serif}
+.trend-btn:hover{border-color:var(--border2);color:var(--text)}
+.trend-btn.active{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent)}
+.trend-btn .arr{font-size:20px;line-height:1.2;display:block}
+.trend-btn .lbl{font-size:10px;display:block;margin-top:2px}
+.meal-header{display:grid;grid-template-columns:1fr 90px 32px;gap:8px;margin-bottom:4px}
+.meal-header span{font-size:11px;color:var(--hint)}
+.meal-item{display:grid;grid-template-columns:1fr 90px 32px;gap:8px;align-items:center;margin-bottom:6px}
+.meal-item input{font-size:14px;padding:8px 10px}
+.rm-btn{width:32px;height:36px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;color:var(--hint);font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.rm-btn:hover{background:var(--red-soft);border-color:rgba(247,111,111,.3);color:var(--red)}
+.add-meal-btn{width:100%;background:transparent;border:1px dashed var(--border2);border-radius:var(--radius);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;margin-top:2px}
+.add-meal-btn:hover{background:var(--surface2);color:var(--text);border-style:solid}
+.total-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:var(--radius);padding:.75rem 1rem;margin-top:.75rem;border:1px solid var(--border)}
+.total-label{font-size:13px;color:var(--muted)}
+.total-val{font-family:'DM Mono',monospace;font-size:24px;font-weight:500;color:var(--accent)}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:4px 0;margin-bottom:.75rem;user-select:none}
+.toggle-label{font-size:14px;color:var(--text)}
+.toggle{width:42px;height:24px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;position:relative;transition:background .2s,border-color .2s;flex-shrink:0}
+.toggle.on{background:var(--accent);border-color:var(--accent)}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s}
+.toggle.on::after{left:21px}
+.slow-panel{display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;gap:12px;align-items:center}
+.slow-panel.visible{display:flex}
+.slow-panel .syringe{font-size:28px}
+.slow-panel .field{flex:1}
+.slow-time{text-align:right;font-size:12px;color:var(--muted);line-height:1.8;flex-shrink:0}
+.slow-time strong{font-family:'DM Mono',monospace;font-size:16px;color:var(--text);display:block}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;background:var(--amber-soft);color:var(--amber);border:1px solid rgba(247,178,79,.2);margin-left:8px;text-transform:none;letter-spacing:0}
+.submit-btn{width:100%;background:var(--accent);border:none;border-radius:var(--radius);color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;padding:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s,transform .1s}
+.submit-btn:hover{opacity:.9}
+.submit-btn:active{transform:scale(.99)}
+.submit-btn:disabled{opacity:.4;cursor:not-allowed}
+.reset-btn{width:100%;background:transparent;border:1px solid var(--border2);border-radius:var(--radius);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:14px;padding:.7rem;cursor:pointer;margin-top:.5rem;transition:all .15s}
+.reset-btn:hover{background:var(--surface2);color:var(--text)}
+.status{border-radius:var(--radius);padding:.65rem 1rem;font-size:14px;display:none;margin-bottom:.75rem;font-weight:500}
+.status.ok{background:var(--green-soft);color:var(--green);border:1px solid rgba(62,207,142,.2);display:block}
+.status.err{background:var(--red-soft);color:var(--red);border:1px solid rgba(247,111,111,.2);display:block}
+.sep{height:1px;background:var(--border);margin:.75rem 0}
+.hint{font-size:12px;color:var(--hint);margin-top:4px;line-height:1.5}
+a.hint-link{color:var(--accent);text-decoration:none}
+a.hint-link:hover{text-decoration:underline}
+::placeholder{color:var(--hint)}
+/* Rapport */
+.cr-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+.cr-header h2{font-size:16px;font-weight:600}
+.refresh-btn{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;padding:.5rem 1rem;cursor:pointer;transition:all .15s}
+.refresh-btn:hover{color:var(--text);border-color:var(--accent-border)}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;text-align:center}
+.stat-card .s-val{font-family:'DM Mono',monospace;font-size:26px;font-weight:500;display:block;margin-bottom:4px}
+.stat-card .s-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.stat-card.blue .s-val{color:var(--accent)}
+.stat-card.green .s-val{color:var(--green)}
+.stat-card.red .s-val{color:var(--red)}
+.stat-card.amber .s-val{color:var(--amber)}
+.stat-card.purple .s-val{color:var(--purple)}
+.chart-wrap{position:relative;height:220px;margin-bottom:.5rem}
+.loading{text-align:center;padding:3rem;color:var(--muted);font-size:14px}
+.sc-title{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;display:flex;align-items:center;gap:7px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:.5rem .75rem;color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border2)}
+td{padding:.6rem .75rem;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
+.pill-sb,.pill-sh{background:rgba(247,111,111,.15);color:var(--red)}
+.pill-b,.pill-h{background:rgba(247,178,79,.15);color:var(--amber)}
+.pill-s{background:rgba(62,207,142,.15);color:var(--green)}
+.chart-legend{display:flex;gap:16px;justify-content:center;font-size:11px;color:var(--muted);margin-top:.5rem}
+@media(max-width:480px){.row{grid-template-columns:1fr}.trend-btn .lbl{display:none}.stat-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="logo">🩺</div>
+    <h1>Suivi diabète <span>Journal de glycémie</span></h1>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('saisie',this)">✏️ Saisie</button>
+    <button class="tab" onclick="switchTab('rapport',this)">📊 Compte rendu</button>
+  </div>
+
+  <!-- SAISIE -->
+  <div class="tab-panel active" id="tab-saisie">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> Date & heure</div>
+      <div class="row">
+        <div class="field"><label>Date</label><input type="date" id="date"></div>
+        <div class="field"><label>Heure</label><input type="time" id="time" oninput="updateSlowTime()"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> Glycémie</div>
+      <div class="row">
+        <div class="field">
+          <label>Valeur (mg/dL)</label>
+          <input type="number" id="glycemie" placeholder="ex : 120" min="20" max="600">
+        </div>
+        <div class="field">
+          <label>Tendance</label>
+          <div class="trend-grid">
+            <button class="trend-btn" data-val="Forte Baisse" onclick="selectTrend(this)"><span class="arr">↓↓</span><span class="lbl">Forte baisse</span></button>
+            <button class="trend-btn" data-val="Baisse" onclick="selectTrend(this)"><span class="arr">↓</span><span class="lbl">Baisse</span></button>
+            <button class="trend-btn" data-val="Stable" onclick="selectTrend(this)"><span class="arr">→</span><span class="lbl">Stable</span></button>
+            <button class="trend-btn" data-val="Hausse" onclick="selectTrend(this)"><span class="arr">↑</span><span class="lbl">Hausse</span></button>
+            <button class="trend-btn" data-val="Forte Hausse" onclick="selectTrend(this)"><span class="arr">↑↑</span><span class="lbl">Forte hausse</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> Repas & insuline rapide</div>
+      <div class="meal-header"><span>Aliment</span><span>Insuline (U)</span><span></span></div>
+      <div id="meal-list"></div>
+      <button class="add-meal-btn" onclick="addMeal()">+ Ajouter un aliment</button>
+      <div class="sep"></div>
+      <div class="row">
+        <div class="field">
+          <label>Bonus / Malus insuline</label>
+          <input type="text" id="bonus" placeholder="ex : +6 ou -3" oninput="updateTotal()">
+        </div>
+        <div></div>
+      </div>
+      <div class="total-row">
+        <span class="total-label">⟨/⟩ Total insuline rapide</span>
+        <span class="total-val" id="total-insulin">0 U</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> Insuline lente <span class="badge">🌙 1× / jour — soir</span></div>
+      <div class="toggle-row" onclick="toggleSlow()">
+        <span class="toggle-label">Prise d'insuline lente ce soir</span>
+        <div class="toggle" id="slow-toggle"></div>
+      </div>
+      <div class="slow-panel" id="slow-panel">
+        <span class="syringe">💉</span>
+        <div class="field">
+          <label>Dose (unités)</label>
+          <input type="number" id="insuline-lente" placeholder="ex : 20" min="0" step="1">
+        </div>
+        <div class="slow-time">Heure d'injection<strong id="slow-time-display">—</strong></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> Activité physique</div>
+      <div class="field"><input type="text" id="activite" placeholder="ex : 30 min de vélo, marche 1h…"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> Notes libres</div>
+      <div class="field"><textarea id="notes" placeholder="Observations, contexte, ressenti…"></textarea></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> Google Sheets</div>
+      <div class="field" style="margin-bottom:.85rem">
+        <label>URL du Apps Script (envoi)</label>
+        <input type="url" id="webhook-url" placeholder="https://script.google.com/macros/s/…/exec">
+        <p class="hint">Pour tester sans Sheet : <a class="hint-link" href="https://webhook.site" target="_blank">webhook.site</a></p>
+      </div>
+      <div id="status-msg" class="status"></div>
+      <button class="submit-btn" id="submit-btn" onclick="submitData()">↗ Enregistrer dans Google Sheets</button>
+      <button class="reset-btn" onclick="resetForm()">Réinitialiser le formulaire</button>
+    </div>
+  </div>
+
+  <!-- RAPPORT -->
+  <div class="tab-panel" id="tab-rapport">
+    <div class="cr-header">
+      <h2>Compte rendu</h2>
+      <button class="refresh-btn" onclick="loadReport()">🔄 Actualiser</button>
+    </div>
+
+    <div id="report-loading" class="loading" style="display:none">Chargement des données…</div>
+    <div id="report-error" class="status err" style="margin-bottom:1rem"></div>
+
+    <div id="report-content" style="display:none">
+      <div class="stat-grid" id="stat-grid"></div>
+
+      <div class="card">
+        <div class="sc-title"><span class="dot"></span> Courbe glycémie (mg/dL) — 30 dernières mesures</div>
+        <div class="chart-wrap"><canvas id="chartGlycemie"></canvas></div>
+        <div class="chart-legend">
+          <span style="color:var(--red)">● Forte baisse / hausse</span>
+          <span style="color:var(--amber)">● Baisse / Hausse</span>
+          <span style="color:var(--green)">● Stable</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sc-title"><span class="dot"></span> Insuline rapide totale par jour (U) — 14 derniers jours</div>
+        <div class="chart-wrap"><canvas id="chartInsuline"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="sc-title"><span class="dot"></span> Dernières entrées</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Heure</th><th>Glycémie</th><th>Tendance</th><th>Insuline</th><th>Activité</th></tr></thead>
+            <tbody id="entries-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const WEBHOOK_POST = 'https://script.google.com/macros/s/AKfycbxjS5XBRZL_PzFJFGOoKQGsQZNdBbfJSZzu9-us0DDNvdqwcGYvpxAMqDSQyku1SOhA/exec';
+const WEBHOOK_GET  = 'https://script.google.com/macros/s/AKfycbxjS5XBRZL_PzFJFGOoKQGsQZNdBbfJSZzu9-us0DDNvdqwcGYvpxAMqDSQyku1SOhA/exec';
+
+let selectedTrend='', meals=[], slowEnabled=false, chartGly=null, chartIns=null;
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name==='rapport') loadReport();
+}
+
+function init() {
+  const now=new Date();
+  document.getElementById('date').value=now.toISOString().slice(0,10);
+  const hh=String(now.getHours()).padStart(2,'0'), mm=String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('time').value=hh+':'+mm;
+  updateSlowTime(); addMeal();
+  document.getElementById('webhook-url').value=localStorage.getItem('diabetes-webhook')||WEBHOOK_POST;
+}
+
+function updateSlowTime(){document.getElementById('slow-time-display').textContent=document.getElementById('time').value||'—'}
+function toggleSlow(){slowEnabled=!slowEnabled;document.getElementById('slow-toggle').className='toggle'+(slowEnabled?' on':'');document.getElementById('slow-panel').className='slow-panel'+(slowEnabled?' visible':'')}
+function selectTrend(btn){document.querySelectorAll('.trend-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');selectedTrend=btn.dataset.val}
+function addMeal(){meals.push({id:Date.now(),name:'',insulin:''});renderMeals()}
+function removeMeal(id){meals=meals.filter(m=>m.id!==id);renderMeals();updateTotal()}
+
+function renderMeals(){
+  const c=document.getElementById('meal-list');c.innerHTML='';
+  meals.forEach(m=>{
+    const d=document.createElement('div');d.className='meal-item';
+    d.innerHTML=`<input type="text" placeholder="Nom de l'aliment" value="${m.name}" oninput="updateMeal(${m.id},'name',this.value)"><input type="number" placeholder="0" min="0" step="1" value="${m.insulin}" oninput="updateMeal(${m.id},'insulin',this.value)" style="text-align:right"><button class="rm-btn" onclick="removeMeal(${m.id})">✕</button>`;
+    c.appendChild(d);
+  });
+}
+
+function updateMeal(id,field,val){const m=meals.find(m=>m.id===id);if(m)m[field]=val;updateTotal()}
+
+function updateTotal(){
+  const s=meals.reduce((a,m)=>a+(parseFloat(m.insulin)||0),0);
+  const b=parseFloat(document.getElementById('bonus').value.replace(',','.'))||0;
+  document.getElementById('total-insulin').textContent=(Math.round((s+b)*10)/10)+' U';
+}
+
+function collectData(){
+  const s=meals.reduce((a,m)=>a+(parseFloat(m.insulin)||0),0);
+  const bonusRaw=document.getElementById('bonus').value.trim();
+  const b=parseFloat(bonusRaw.replace(',','.'))||0;
+  return{date:document.getElementById('date').value,heure:document.getElementById('time').value,glycemie:document.getElementById('glycemie').value,tendance:selectedTrend,repas:meals.filter(m=>m.name).map(m=>`${m.name}: ${m.insulin||0}U`).join(' | '),bonus:bonusRaw,total_insuline:Math.round((s+b)*10)/10,insuline_lente:slowEnabled?(document.getElementById('insuline-lente').value||''):'',activite:document.getElementById('activite').value,notes:document.getElementById('notes').value};
+}
+
+async function submitData(){
+  const url=document.getElementById('webhook-url').value.trim();
+  if(!url){showStatus('err','⚠ Veuillez entrer l\'URL du webhook.');return}
+  localStorage.setItem('diabetes-webhook',url);
+  const btn=document.getElementById('submit-btn');btn.disabled=true;btn.textContent='⏳ Envoi en cours…';
+  try{
+    await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(collectData())});
+    showStatus('ok','✓ Données enregistrées dans Google Sheets !');btn.textContent='✓ Envoyé !';
+    setTimeout(()=>{btn.textContent='↗ Enregistrer dans Google Sheets';btn.disabled=false},3000);
+  }catch(e){showStatus('err','✕ Erreur de connexion.');btn.textContent='↗ Enregistrer dans Google Sheets';btn.disabled=false}
+}
+
+function showStatus(type,msg){const el=document.getElementById('status-msg');el.className='status '+type;el.textContent=msg}
+
+function resetForm(){
+  if(!confirm('Réinitialiser le formulaire ?'))return;
+  meals=[];selectedTrend='';slowEnabled=false;
+  document.getElementById('slow-toggle').className='toggle';
+  document.getElementById('slow-panel').className='slow-panel';
+  ['glycemie','bonus','activite','notes','insuline-lente'].forEach(id=>document.getElementById(id).value='');
+  document.querySelectorAll('.trend-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('status-msg').className='status';
+  updateTotal();addMeal();
+  const now=new Date();document.getElementById('date').value=now.toISOString().slice(0,10);
+  const hh=String(now.getHours()).padStart(2,'0'),mm=String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('time').value=hh+':'+mm;updateSlowTime();
+}
+
+/* === RAPPORT === */
+async function loadReport(){
+  document.getElementById('report-loading').style.display='block';
+  document.getElementById('report-content').style.display='none';
+  document.getElementById('report-error').style.display='none';
+  try{
+    const res=await fetch(WEBHOOK_GET);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const rows=await res.json();
+    if(!rows.length){showReportErr('Aucune donnée dans le Google Sheet.');return}
+    renderReport(rows);
+  }catch(e){showReportErr('Impossible de charger : '+e.message)}
+}
+
+function showReportErr(msg){
+  document.getElementById('report-loading').style.display='none';
+  const el=document.getElementById('report-error');el.className='status err';el.textContent='✕ '+msg;el.style.display='block';
+}
+
+function trendColor(t){
+  if(t==='Forte Baisse'||t==='Forte Hausse')return'#f76f6f';
+  if(t==='Baisse'||t==='Hausse')return'#f7b24f';
+  if(t==='Stable')return'#3ecf8e';
+  return'#7a7f9a';
+}
+
+function trendPill(t){
+  if(!t)return'—';
+  const cls={Stable:'pill-s',Baisse:'pill-b',Hausse:'pill-h','Forte Baisse':'pill-sb','Forte Hausse':'pill-sh'}[t]||'';
+  return`<span class="pill ${cls}">${t}</span>`;
+}
+
+function renderReport(rows){
+  const data=rows.map(r=>({
+    date:String(r['Date']||r['date']||''),
+    heure:String(r['Heure']||r['heure']||''),
+    glycemie:parseFloat(r['Glycémie (mg/dL)']||r['glycemie']||r['Glycemie']||0),
+    tendance:String(r['Tendance']||r['tendance']||''),
+    insuline:parseFloat(r['Total insuline (U)']||r['total_insuline']||r['Total insuline']||0),
+    insuline_lente:parseFloat(r['Insuline lente (U)']||r['insuline_lente']||0),
+    activite:String(r['Activité']||r['activite']||''),
+    repas:String(r['Repas']||r['repas']||''),
+    notes:String(r['Notes']||r['notes']||'')
+  })).filter(r=>r.date&&r.date.match(/\d{4}/));
+
+  const gv=data.map(r=>r.glycemie).filter(v=>v>0);
+  const iv=data.map(r=>r.insuline).filter(v=>v>0);
+  const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):'—';
+  const avgIns=iv.length?(Math.round(iv.reduce((a,b)=>a+b,0)/iv.length*10)/10):'—';
+
+  document.getElementById('stat-grid').innerHTML=`
+    <div class="stat-card blue"><span class="s-val">${avg(gv)}</span><span class="s-lbl">Moy. glycémie</span></div>
+    <div class="stat-card green"><span class="s-val">${gv.length?Math.min(...gv):'—'}</span><span class="s-lbl">Min glycémie</span></div>
+    <div class="stat-card red"><span class="s-val">${gv.length?Math.max(...gv):'—'}</span><span class="s-lbl">Max glycémie</span></div>
+    <div class="stat-card amber"><span class="s-val">${avgIns}</span><span class="s-lbl">Moy. insuline / entrée</span></div>
+    <div class="stat-card purple"><span class="s-val">${data.length}</span><span class="s-lbl">Entrées totales</span></div>
+    <div class="stat-card blue"><span class="s-val">${data.filter(r=>r.insuline_lente>0).length}</span><span class="s-lbl">Prises insuline lente</span></div>
+  `;
+
+  const glyData=data.filter(r=>r.glycemie>0).slice(-30);
+  if(chartGly)chartGly.destroy();
+  chartGly=new Chart(document.getElementById('chartGlycemie').getContext('2d'),{
+    type:'line',
+    data:{
+      labels:glyData.map(r=>(r.date.slice(5)||r.date)+(r.heure?' '+r.heure.slice(0,5):'')),
+      datasets:[{data:glyData.map(r=>r.glycemie),borderColor:'#4f8ef7',backgroundColor:'rgba(79,142,247,0.08)',borderWidth:2,pointBackgroundColor:glyData.map(r=>trendColor(r.tendance)),pointBorderColor:glyData.map(r=>trendColor(r.tendance)),pointRadius:5,tension:0.3,fill:true}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#7a7f9a',font:{size:10},maxRotation:45},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#7a7f9a',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'},min:glyData.length?Math.max(0,Math.min(...glyData.map(r=>r.glycemie))-20):0}}}
+  });
+
+  const byDay={};
+  data.forEach(r=>{if(r.date){byDay[r.date]=(byDay[r.date]||0)+r.insuline}});
+  const dk=Object.keys(byDay).sort().slice(-14);
+  if(chartIns)chartIns.destroy();
+  chartIns=new Chart(document.getElementById('chartInsuline').getContext('2d'),{
+    type:'bar',
+    data:{labels:dk.map(d=>d.slice(5)),datasets:[{data:dk.map(d=>Math.round(byDay[d]*10)/10),backgroundColor:'rgba(167,139,250,0.45)',borderColor:'#a78bfa',borderWidth:1,borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#7a7f9a',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#7a7f9a',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'},beginAtZero:true}}}
+  });
+
+  const tbody=document.getElementById('entries-body');tbody.innerHTML='';
+  [...data].reverse().slice(0,20).forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.date||'—'}</td><td style="font-family:'DM Mono',monospace;font-size:12px">${r.heure||'—'}</td><td style="font-family:'DM Mono',monospace;font-weight:500">${r.glycemie||'—'}</td><td>${trendPill(r.tendance)}</td><td style="font-family:'DM Mono',monospace">${r.insuline||'—'} U</td><td style="color:var(--muted);font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.activite||'—'}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('report-loading').style.display='none';
+  document.getElementById('report-content').style.display='block';
+}
+
+init();
+</script>
+</body>
+</html>
