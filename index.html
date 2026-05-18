@@ -40,9 +40,7 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="time"]::-webki
 .trend-btn.active{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent)}
 .trend-btn .arr{font-size:20px;line-height:1.2;display:block}
 .trend-btn .lbl{font-size:10px;display:block;margin-top:2px}
-.meal-header{display:grid;grid-template-columns:1fr 90px 32px;gap:8px;margin-bottom:4px}
 .meal-header span{font-size:11px;color:var(--hint)}
-.meal-item{display:grid;grid-template-columns:1fr 90px 32px;gap:8px;align-items:center;margin-bottom:6px}
 .meal-item input{font-size:14px;padding:8px 10px}
 .rm-btn{width:32px;height:36px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;color:var(--hint);font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
 .rm-btn:hover{background:var(--red-soft);border-color:rgba(247,111,111,.3);color:var(--red)}
@@ -246,8 +244,9 @@ tr:hover td{background:var(--surface2)}
 </div>
 
 <script>
-const WEBHOOK_POST = 'https://script.google.com/macros/s/AKfycbyHCnHttuwLuyOcXKf8rrRUCU0kHFEk6F0lChWGsrZ7lGGdjyjikJXrRaSZuC8ZMGEQ/exec';
-const WEBHOOK_GET  = 'https://script.google.com/macros/s/AKfycbyHCnHttuwLuyOcXKf8rrRUCU0kHFEk6F0lChWGsrZ7lGGdjyjikJXrRaSZuC8ZMGEQ/exec';
+const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyHCnHttuwLuyOcXKf8rrRUCU0kHFEk6F0lChWGsrZ7lGGdjyjikJXrRaSZuC8ZMGEQ/exec';
+const WEBHOOK_POST = WEBHOOK_URL;
+const WEBHOOK_GET  = WEBHOOK_URL;
 
 let selectedTrend='', meals=[], slowEnabled=false, chartGly=null, chartIns=null;
 
@@ -332,7 +331,19 @@ function collectData(){
   const s=meals.reduce((a,m)=>a+(parseFloat(m.insulin)||0),0);
   const bonusRaw=document.getElementById('bonus').value.trim();
   const b=parseFloat(bonusRaw.replace(',','.'))||0;
-  return{date:document.getElementById('date').value,heure:document.getElementById('time').value,glycemie:document.getElementById('glycemie').value,tendance:selectedTrend,repas:meals.filter(m=>m.name).map(m=>`${m.name}: ${m.insulin||0}U`).join(' | '),bonus:bonusRaw,total_insuline:Math.round((s+b)*10)/10,insuline_lente:slowEnabled?(document.getElementById('insuline-lente').value||''):'',activite:document.getElementById('activite').value,notes:document.getElementById('notes').value};
+  const lente = slowEnabled ? (parseFloat(document.getElementById('insuline-lente').value)||0) : 0;
+  return{
+    date: document.getElementById('date').value,
+    heure: document.getElementById('time').value,
+    glycemie: document.getElementById('glycemie').value,
+    tendance: selectedTrend,
+    repas: meals.filter(m=>m.name).map(m=>`${m.name}: ${m.insulin||0}U`).join(' | '),
+    bonus: bonusRaw,
+    total_insuline: Math.round((s+b)*10)/10,
+    insuline_lente: lente,
+    activite: document.getElementById('activite').value,
+    notes: document.getElementById('notes').value
+  };
 }
 
 async function submitData(){
