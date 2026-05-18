@@ -194,12 +194,18 @@ tr:hover td{background:var(--surface2)}
 
     <div class="card">
       <div class="card-title"><span class="dot"></span> Activité physique</div>
-      <div class="field"><input type="text" id="activite" placeholder="ex : 30 min de vélo, marche 1h…"></div>
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <div class="field" style="flex:1"><input type="text" id="activite" placeholder="ex : 30 min de vélo, marche 1h…"></div>
+        <button class="mic-btn" id="mic-activite" onclick="startVoiceField('activite','mic-activite')" title="Dicter" style="margin-top:0;height:38px;width:38px">🎤</button>
+      </div>
     </div>
 
     <div class="card">
       <div class="card-title"><span class="dot"></span> Notes libres</div>
-      <div class="field"><textarea id="notes" placeholder="Observations, contexte, ressenti…"></textarea></div>
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <div class="field" style="flex:1"><textarea id="notes" placeholder="Observations, contexte, ressenti…"></textarea></div>
+        <button class="mic-btn" id="mic-notes" onclick="startVoiceField('notes','mic-notes')" title="Dicter" style="height:38px;width:38px">🎤</button>
+      </div>
     </div>
 
     <div class="card">
@@ -469,6 +475,35 @@ function renderReport(rows){
 }
 
 let activeRecognition = null;
+
+function startVoiceField(fieldId, btnId){
+  if(!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)){
+    alert('Reconnaissance vocale non supportée. Utilisez Chrome ou Edge.');
+    return;
+  }
+  const btn=document.getElementById(btnId);
+  const field=document.getElementById(fieldId);
+  if(activeRecognition){activeRecognition.stop();activeRecognition=null;return;}
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const rec=new SR();
+  rec.lang='fr-FR';
+  rec.continuous=true;
+  rec.interimResults=true;
+  activeRecognition=rec;
+  btn.classList.add('recording');btn.textContent='⏹';
+  const base=field.value;
+  rec.onresult=e=>{
+    let interim='', final='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal) final+=e.results[i][0].transcript;
+      else interim+=e.results[i][0].transcript;
+    }
+    field.value=base+(base&&(final||interim)?' ':'')+final+interim;
+  };
+  rec.onerror=e=>{btn.classList.remove('recording');btn.textContent='🎤';activeRecognition=null};
+  rec.onend=()=>{btn.classList.remove('recording');btn.textContent='🎤';activeRecognition=null};
+  rec.start();
+}
 
 function startVoice(id){
   if(!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)){
