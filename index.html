@@ -244,7 +244,7 @@ tr:hover td{background:var(--surface2)}
 </div>
 
 <script>
-const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzYmTveNOBWH35Yi_0cfQAm7Ayt3r6LEe_qxcM76BZnzZXFeTT_Mb87c7bQS3mk1L0v/exec';
+const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyHCnHttuwLuyOcXKf8rrRUCU0kHFEk6F0lChWGsrZ7lGGdjyjikJXrRaSZuC8ZMGEQ/exec';
 const WEBHOOK_POST = WEBHOOK_URL;
 const WEBHOOK_GET  = WEBHOOK_URL;
 
@@ -417,7 +417,13 @@ function formatDate(date, heure){
   if(d.match(/^[A-Z][a-z]{2} [A-Z]/)){
     try{
       const dt=new Date(d);
-      if(!isNaN(dt)) d=dt.toISOString().slice(0,10);
+      if(!isNaN(dt)){
+        // Utiliser la date locale pour éviter le décalage UTC
+        const yyyy=dt.getFullYear();
+        const mm=String(dt.getMonth()+1).padStart(2,'0');
+        const dd=String(dt.getDate()).padStart(2,'0');
+        d=yyyy+'-'+mm+'-'+dd;
+      }
     }catch(e){}
   }
 
