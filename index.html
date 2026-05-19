@@ -99,6 +99,16 @@ a.hint-link:hover{text-decoration:underline}
 .chart-wrap{position:relative;height:220px;margin-bottom:.5rem}
 .loading{text-align:center;padding:3rem;color:var(--muted);font-size:14px}
 .sc-title{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem;display:flex;align-items:center;gap:7px}
+.day-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:.9rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:.55rem .7rem}
+.day-nav-btn{width:34px;height:34px;border-radius:var(--radius);border:1px solid var(--border2);background:transparent;color:var(--text);font-size:18px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.day-nav-btn:hover{border-color:var(--accent-border);color:var(--accent)}
+.day-nav-btn:disabled{opacity:.35;cursor:not-allowed}
+.day-nav-label{text-align:center;line-height:1.25;flex:1;min-width:0}
+.day-nav-label strong{display:block;font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.day-nav-label span{display:block;font-size:11px;color:var(--muted)}
+.swipe-hint{text-align:center;font-size:11px;color:var(--hint);margin-bottom:.7rem;user-select:none}
+#entries-list.swipe-anim{animation:swipeIn .2s ease}
+@keyframes swipeIn{from{opacity:.45;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;padding:.5rem .75rem;color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border2)}
@@ -237,6 +247,15 @@ tr:hover td{background:var(--surface2)}
       </div>
       <div class="card">
         <div class="sc-title"><span class="dot"></span> Dernières entrées</div>
+        <div class="day-nav">
+          <button class="day-nav-btn" id="day-prev" onclick="changeReportDay(-1)" title="Jour précédent">‹</button>
+          <div class="day-nav-label">
+            <strong id="day-title">—</strong>
+            <span id="day-subtitle">0 entrée</span>
+          </div>
+          <button class="day-nav-btn" id="day-next" onclick="changeReportDay(1)" title="Jour suivant">›</button>
+        </div>
+        <div class="swipe-hint">Glissez vers la gauche ou la droite pour changer de jour</div>
         <div id="entries-list"></div>
       </div>
     </div>
@@ -249,6 +268,7 @@ const WEBHOOK_POST = WEBHOOK_URL;
 const WEBHOOK_GET  = WEBHOOK_URL;
 
 let selectedTrend='', meals=[], slowEnabled=false, chartGly=null, chartIns=null;
+let reportDays=[], currentReportDayIndex=0, reportSwipeStartX=null;
 
 function switchTab(name, btn) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -445,34 +465,110 @@ function formatDate(date, heure){
   return d+(h?' '+h:'');
 }
 
-function renderReport(rows){
-  const data=rows.map(r=>({
-    date:String(r['Date']||r['date']||''),
-    heure:String(r['Heure']||r['heure']||''),
-    glycemie:parseFloat(r['Glycémie (mg/dL)']||r['glycemie']||r['Glycemie']||0),
-    tendance:String(r['Tendance']||r['tendance']||''),
-    insuline:parseFloat(r['Total insuline (U)']||r['total_insuline']||r['Total insuline']||0),
-    bonus:String(r['Bonus/Malus']||r['bonus']||''),
-    insuline_lente:parseFloat(r['Insuline lente (U)']||r['insuline_lente']||0),
-    activite:String(r['Activité']||r['activite']||''),
-    repas:String(r['Repas']||r['repas']||''),
-    notes:String(r['Notes']||r['notes']||'')
-  })).filter(r=>r.date&&r.date.match(/\d{4}/));
+function normalizeDateKey(rawDate){
+  if(!rawDate) return '';
+  let d=String(rawDate).trim();
+  if(!d) return '';
 
-  const gv=data.map(r=>r.glycemie).filter(v=>v>0);
-  const avg=gv.length?Math.round(gv.reduce((a,b)=>a+b,0)/gv.length):'—';
-  document.getElementById('avg-gly').textContent=avg;
+  if(d.match(/^\d{4}-\d{2}-\d{2}$/)) return d;
+  if(d.match(/^\d{2}\/\d{2}\/\d{4}$/)){
+    const p=d.split('/');
+    return `${p[2]}-${p[1]}-${p[0]}`;
+  }
+  if(d.match(/^\d{4}\/\d{2}\/\d{2}$/)) return d.replaceAll('/','-');
 
-  const list=document.getElementById('entries-list');list.innerHTML='';
-  [...data].reverse().slice(0,30).forEach((r,i)=>{
+  try{
+    const dt=new Date(d);
+    if(!isNaN(dt)){
+      const yyyy=dt.getFullYear();
+      const mm=String(dt.getMonth()+1).padStart(2,'0');
+      const dd=String(dt.getDate()).padStart(2,'0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+  }catch(e){}
+  return '';
+}
+
+function normalizeTime(rawTime){
+  if(!rawTime) return '';
+  let t=String(rawTime).trim();
+  if(!t) return '';
+  if(t.match(/^\d{2}:\d{2}/)) return t.slice(0,5);
+  try{
+    const dt=new Date(t);
+    if(!isNaN(dt)) return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+  }catch(e){}
+  return '';
+}
+
+function humanDateLabel(dateKey){
+  if(!dateKey) return '—';
+  const [y,m,d]=dateKey.split('-').map(n=>parseInt(n,10));
+  const dt=new Date(y,m-1,d);
+  const wd=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'][dt.getDay()];
+  const mn=['janvier','fevrier','mars','avril','mai','juin','juillet','aout','septembre','octobre','novembre','decembre'][dt.getMonth()];
+  return `${wd} ${d} ${mn} ${y}`;
+}
+
+function changeReportDay(step){
+  if(!reportDays.length) return;
+  const next=currentReportDayIndex+step;
+  if(next<0||next>=reportDays.length) return;
+  currentReportDayIndex=next;
+  renderReportDay();
+}
+
+function setupReportSwipe(){
+  const list=document.getElementById('entries-list');
+  if(!list||list.dataset.swipeBound==='1') return;
+  list.dataset.swipeBound='1';
+
+  list.addEventListener('touchstart',e=>{
+    if(!e.touches||!e.touches.length) return;
+    reportSwipeStartX=e.touches[0].clientX;
+  },{passive:true});
+
+  list.addEventListener('touchend',e=>{
+    if(reportSwipeStartX===null||!e.changedTouches||!e.changedTouches.length) return;
+    const delta=e.changedTouches[0].clientX-reportSwipeStartX;
+    reportSwipeStartX=null;
+    if(Math.abs(delta)<40) return;
+    if(delta<0) changeReportDay(1);
+    else changeReportDay(-1);
+  },{passive:true});
+}
+
+function renderReportDay(){
+  const list=document.getElementById('entries-list');
+  const dayTitle=document.getElementById('day-title');
+  const daySubtitle=document.getElementById('day-subtitle');
+  const prevBtn=document.getElementById('day-prev');
+  const nextBtn=document.getElementById('day-next');
+
+  list.innerHTML='';
+  if(!reportDays.length){
+    dayTitle.textContent='—';
+    daySubtitle.textContent='0 entree';
+    prevBtn.disabled=true;
+    nextBtn.disabled=true;
+    return;
+  }
+
+  const day=reportDays[currentReportDayIndex];
+  dayTitle.textContent=humanDateLabel(day.date);
+  daySubtitle.textContent=`${day.entries.length} ${day.entries.length>1?'entrees':'entree'}`;
+  prevBtn.disabled=currentReportDayIndex===0;
+  nextBtn.disabled=currentReportDayIndex===reportDays.length-1;
+
+  day.entries.forEach((r,i)=>{
     const div=document.createElement('div');
-    div.style.cssText='border-bottom:1px solid var(--border);padding:.85rem 0;'+(i===0?'':'');
+    div.style.cssText='border-bottom:1px solid var(--border);padding:.85rem 0;'+(i===day.entries.length-1?'border-bottom:none;':'');
     const insStr=r.insuline?(r.insuline+'U'+(r.bonus?' ('+r.bonus+')':'')):'—';
     const lentStr=r.insuline_lente>0?r.insuline_lente+'U':'';
     const tc={Stable:'pill-s',Baisse:'pill-b',Hausse:'pill-h','Forte Baisse':'pill-sb','Forte Hausse':'pill-sh'}[r.tendance]||'';
     div.innerHTML=`
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem">
-        <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--muted)">${formatDate(r.date,r.heure)}</span>
+        <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--muted)">${r.heure||'--:--'}</span>
         ${r.tendance?`<span class="pill ${tc}" style="font-size:11px">${r.tendance}</span>`:''}
       </div>
       <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:.35rem">
@@ -486,6 +582,48 @@ function renderReport(rows){
     `;
     list.appendChild(div);
   });
+
+  list.classList.remove('swipe-anim');
+  void list.offsetWidth;
+  list.classList.add('swipe-anim');
+}
+
+function renderReport(rows){
+  const data=rows.map(r=>({
+    date:String(r['Date']||r['date']||''),
+    heure:String(r['Heure']||r['heure']||''),
+    glycemie:parseFloat(r['Glycémie (mg/dL)']||r['glycemie']||r['Glycemie']||0),
+    tendance:String(r['Tendance']||r['tendance']||''),
+    insuline:parseFloat(r['Total insuline (U)']||r['total_insuline']||r['Total insuline']||0),
+    bonus:String(r['Bonus/Malus']||r['bonus']||''),
+    insuline_lente:parseFloat(r['Insuline lente (U)']||r['insuline_lente']||0),
+    activite:String(r['Activité']||r['activite']||''),
+    repas:String(r['Repas']||r['repas']||''),
+    notes:String(r['Notes']||r['notes']||'')
+  })).map(r=>({
+    ...r,
+    dateKey:normalizeDateKey(r.date),
+    heure:normalizeTime(r.heure)
+  })).filter(r=>r.dateKey&&r.glycemie>0);
+
+  const gv=data.map(r=>r.glycemie).filter(v=>v>0);
+  const avg=gv.length?Math.round(gv.reduce((a,b)=>a+b,0)/gv.length):'—';
+  document.getElementById('avg-gly').textContent=avg;
+
+  const grouped={};
+  data.forEach(r=>{
+    if(!grouped[r.dateKey]) grouped[r.dateKey]=[];
+    grouped[r.dateKey].push(r);
+  });
+
+  reportDays=Object.keys(grouped).sort().map(d=>({
+    date:d,
+    entries:grouped[d].sort((a,b)=>a.heure.localeCompare(b.heure))
+  }));
+
+  currentReportDayIndex=Math.max(0,reportDays.length-1);
+  renderReportDay();
+  setupReportSwipe();
 
   document.getElementById('report-loading').style.display='none';
   document.getElementById('report-content').style.display='block';
