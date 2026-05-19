@@ -120,6 +120,13 @@ tr:hover td{background:var(--surface2)}
 .pill-b,.pill-h{background:rgba(247,178,79,.15);color:var(--amber)}
 .pill-s{background:rgba(62,207,142,.15);color:var(--green)}
 .chart-legend{display:flex;gap:16px;justify-content:center;font-size:11px;color:var(--muted);margin-top:.5rem}
+.meal-report{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:.55rem .65rem;margin-bottom:.35rem}
+.meal-report-hd{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.45rem}
+.meal-report-total{font-family:'DM Mono',monospace;color:var(--accent);font-size:12px}
+.meal-list{display:grid;gap:6px}
+.meal-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:9px;padding:.4rem .5rem}
+.meal-name{font-size:12px;color:var(--text);line-height:1.35}
+.meal-unit{font-family:'DM Mono',monospace;font-size:12px;color:var(--amber);white-space:nowrap}
 @media(max-width:480px){.row{grid-template-columns:1fr}.trend-btn .lbl{display:none}.stat-grid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
@@ -510,6 +517,56 @@ function humanDateLabel(dateKey){
   return `${wd} ${d} ${mn} ${y}`;
 }
 
+function parseMealText(repas){
+  if(!repas) return [];
+  return String(repas)
+    .split('|')
+    .map(x=>x.trim())
+    .filter(Boolean)
+    .map(item=>{
+      const m=item.match(/^(.*?)(?::\s*([-+]?\d+(?:[\.,]\d+)?)\s*U?)?$/i);
+      if(!m) return {name:item, units:null};
+      const name=(m[1]||'').trim()||item;
+      const rawUnits=(m[2]||'').replace(',','.').trim();
+      const units=rawUnits?parseFloat(rawUnits):null;
+      return {name, units:isNaN(units)?null:units};
+    });
+}
+
+function renderMealBlock(repas){
+  const meals=parseMealText(repas);
+  if(!meals.length) return '';
+  const total=meals.reduce((a,m)=>a+(m.units||0),0);
+  const lines=meals.map(m=>`
+    <div class="meal-row">
+      <span class="meal-name">${m.name}</span>
+      <span class="meal-unit">${m.units===null?'-- U':(Math.round(m.units*10)/10)+' U'}</span>
+    </div>
+  `).join('');
+
+  return `
+    <div class="meal-report">
+      <div class="meal-report-hd">
+        <span>Repas detaille</span>
+        <span class="meal-report-total">Total ${Math.round(total*10)/10} U</span>
+      </div>
+      <div class="meal-list">${lines}</div>
+    </div>
+  `;
+}
+
+function formatBonusMalus(rawBonus){
+  const raw=String(rawBonus||'').trim();
+  if(!raw) return '';
+
+  const n=parseFloat(raw.replace(',','.'));
+  if(isNaN(n)||n===0) return '';
+
+  const val=Math.round(Math.abs(n)*10)/10;
+  const txt=String(val);
+  return n>0?`+${txt} bonus`:`-${txt} malus`;
+}
+
 function changeReportDay(step){
   if(!reportDays.length) return;
   const next=currentReportDayIndex+step;
@@ -563,7 +620,8 @@ function renderReportDay(){
   day.entries.forEach((r,i)=>{
     const div=document.createElement('div');
     div.style.cssText='border-bottom:1px solid var(--border);padding:.85rem 0;'+(i===day.entries.length-1?'border-bottom:none;':'');
-    const insStr=r.insuline?(r.insuline+'U'+(r.bonus?' ('+r.bonus+')':'')):'—';
+    const bonusLabel=formatBonusMalus(r.bonus);
+    const insStr=r.insuline?(r.insuline+'U'+(bonusLabel?' ('+bonusLabel+')':'')):'—';
     const lentStr=r.insuline_lente>0?r.insuline_lente+'U':'';
     const tc={Stable:'pill-s',Baisse:'pill-b',Hausse:'pill-h','Forte Baisse':'pill-sb','Forte Hausse':'pill-sh'}[r.tendance]||'';
     div.innerHTML=`
@@ -576,7 +634,7 @@ function renderReportDay(){
         <span style="font-size:12px;color:var(--muted)">mg/dL</span>
         <span style="font-size:13px;color:var(--purple);margin-left:auto">💉 ${insStr}${lentStr?' &nbsp;🌙 '+lentStr:''}</span>
       </div>
-      ${r.repas?`<div style="font-size:12px;color:var(--muted);margin-bottom:.25rem">🍽 ${r.repas}</div>`:''}
+      ${r.repas?renderMealBlock(r.repas):''}
       ${r.activite?`<div style="font-size:12px;color:var(--muted);margin-bottom:.25rem">🏃 ${r.activite}</div>`:''}
       ${r.notes?`<div style="font-size:12px;color:var(--hint);font-style:italic">📝 ${r.notes}</div>`:''}
     `;
