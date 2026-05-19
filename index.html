@@ -407,8 +407,9 @@ async function loadReport(){
   document.getElementById('report-content').style.display='none';
   document.getElementById('report-error').style.display='none';
   try{
-    const proxy='https://corsproxy.io/?url='+encodeURIComponent(WEBHOOK_GET);
-    const res=await fetch(proxy);
+    const bust='?t='+Date.now();
+    const proxy='https://corsproxy.io/?url='+encodeURIComponent(WEBHOOK_GET+bust);
+    const res=await fetch(proxy,{cache:'no-store'});
     if(!res.ok)throw new Error('HTTP '+res.status);
     let rows=await res.json();
     if(typeof rows==='string')rows=JSON.parse(rows);
