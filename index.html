@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Suivi Diabète</title>
+<title>Seafusion Diabète</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -134,12 +134,12 @@ tr:hover td{background:var(--surface2)}
 <div class="page">
   <header>
     <div class="logo">🩺</div>
-    <h1>Suivi diabète <span>Journal de glycémie</span></h1>
+    <h1>Seafusion Diabète <span>Journal de glycémie</span></h1>
   </header>
 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('saisie',this)">✏️ Saisie</button>
-    <button class="tab" onclick="switchTab('rapport',this)">📊 Compte rendu</button>
+    <button class="tab" onclick="switchTab('rapport',this)">📊 Bilan</button>
   </div>
 
   <!-- SAISIE -->
@@ -239,7 +239,7 @@ tr:hover td{background:var(--surface2)}
   <!-- RAPPORT -->
   <div class="tab-panel" id="tab-rapport">
     <div class="cr-header">
-      <h2>Compte rendu</h2>
+      <h2>Bilan</h2>
       <button class="refresh-btn" onclick="loadReport()">🔄 Actualiser</button>
     </div>
 
