@@ -58,6 +58,7 @@ const FOODS_DB = [
 
   // --- Oeufs ---
   ['oeuf entier',1],['blanc oeuf',1],['jaune oeuf',1],['omelette',1],['oeuf dur',1],
+  ['œuf dur',1],
 
   // --- Viandes ---
   ['boeuf hache',0],['steak',0],['rosbif',0],['cote boeuf',0],['bavette',0],
