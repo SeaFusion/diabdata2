@@ -6,6 +6,7 @@
 <title>Seafusion Diabète</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="foods.js"></script>
 <style>
 :root{--bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);--text:#eef0f6;--muted:#7a7f9a;--hint:#4a4f66;--accent:#4f8ef7;--accent-soft:rgba(79,142,247,0.12);--accent-border:rgba(79,142,247,0.35);--green:#3ecf8e;--green-soft:rgba(62,207,142,0.1);--red:#f76f6f;--red-soft:rgba(247,111,111,0.1);--amber:#f7b24f;--amber-soft:rgba(247,178,79,0.1);--purple:#a78bfa;--radius:10px;--radius-lg:16px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -48,7 +49,7 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="time"]::-webki
 .mic-btn:hover{border-color:var(--accent-border);color:var(--accent)}
 .mic-btn.recording{background:var(--red-soft);border-color:rgba(247,111,111,.5);color:var(--red);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-.meal-item{display:grid;grid-template-columns:1fr 90px 32px 32px;gap:8px;align-items:center;margin-bottom:6px}
+.meal-item{display:grid;grid-template-columns:1fr 90px 32px 32px;gap:8px;align-items:start;margin-bottom:6px}
 .meal-header{display:grid;grid-template-columns:1fr 90px 32px 32px;gap:8px;margin-bottom:4px}
 .add-meal-btn{width:100%;background:transparent;border:1px dashed var(--border2);border-radius:var(--radius);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;margin-top:2px}
 .add-meal-btn:hover{background:var(--surface2);color:var(--text);border-style:solid}
@@ -127,6 +128,7 @@ tr:hover td{background:var(--surface2)}
 .meal-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:9px;padding:.4rem .5rem}
 .meal-name{font-size:12px;color:var(--text);line-height:1.35}
 .meal-unit{font-family:'DM Mono',monospace;font-size:12px;color:var(--amber);white-space:nowrap}
+.carb-hint{font-size:10px;min-height:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:480px){.row{grid-template-columns:1fr}.trend-btn .lbl{display:none}.stat-grid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
@@ -287,7 +289,8 @@ function switchTab(name, btn) {
 
 function init() {
   const now=new Date();
-  document.getElementById('date').value=now.toISOString().slice(0,10);
+  const yyyy=now.getFullYear(), mo=String(now.getMonth()+1).padStart(2,'0'), dd=String(now.getDate()).padStart(2,'0');
+  document.getElementById('date').value=yyyy+'-'+mo+'-'+dd;
   const hh=String(now.getHours()).padStart(2,'0'), mm=String(now.getMinutes()).padStart(2,'0');
   document.getElementById('time').value=hh+':'+mm;
   updateSlowTime(); addMeal();
@@ -297,6 +300,20 @@ function init() {
 function updateSlowTime(){document.getElementById('slow-time-display').textContent=document.getElementById('time').value||'—'}
 function toggleSlow(){slowEnabled=!slowEnabled;document.getElementById('slow-toggle').className='toggle'+(slowEnabled?' on':'');document.getElementById('slow-panel').className='slow-panel'+(slowEnabled?' visible':'')}
 function selectTrend(btn){document.querySelectorAll('.trend-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');selectedTrend=btn.dataset.val}
+
+function lookupCarbs(query){
+  const q=query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  if(q.length<2) return null;
+  const norm=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  let match=FOODS_DB.find(([n])=>norm(n).startsWith(q));
+  if(!match) match=FOODS_DB.find(([n])=>norm(n).includes(q));
+  if(!match){
+    const words=q.split(' ').filter(Boolean);
+    match=FOODS_DB.find(([n])=>words.every(w=>norm(n).includes(w)));
+  }
+  return match||null;
+}
+
 function createMealRow(m){
   const d=document.createElement('div');
   d.className='meal-item';
@@ -305,7 +322,17 @@ function createMealRow(m){
   const nameInput=document.createElement('input');
   nameInput.type='text'; nameInput.placeholder="Nom de l'aliment";
   nameInput.id='meal-name-'+m.id; nameInput.value=m.name;
-  nameInput.oninput=()=>{updateMeal(m.id,'name',nameInput.value)};
+  const carbHint=document.createElement('span');
+  carbHint.className='carb-hint';
+  nameInput.oninput=()=>{
+    updateMeal(m.id,'name',nameInput.value);
+    const q=nameInput.value.trim();
+    if(q.length>=2){
+      const match=lookupCarbs(q);
+      if(match){const ins=Math.round(match[1]/8*10)/10;carbHint.textContent='\uD83C\uDF3E '+match[1]+' g glucides / 100g  \u2192  ~'+ins+' U / 100g';carbHint.style.color='var(--amber)';}
+      else{carbHint.textContent='glucides inconnus';carbHint.style.color='var(--hint)';}
+    } else {carbHint.textContent='';}
+  };
 
   const insInput=document.createElement('input');
   insInput.type='number'; insInput.placeholder='0'; insInput.min='0'; insInput.step='1';
@@ -322,7 +349,11 @@ function createMealRow(m){
   rmBtn.className='rm-btn'; rmBtn.textContent='✕';
   rmBtn.onclick=()=>removeMeal(m.id);
 
-  d.appendChild(nameInput); d.appendChild(insInput);
+  const nameWrapper=document.createElement('div');
+  nameWrapper.style.cssText='display:flex;flex-direction:column;gap:2px;min-width:0';
+  nameWrapper.appendChild(nameInput);
+  nameWrapper.appendChild(carbHint);
+  d.appendChild(nameWrapper); d.appendChild(insInput);
   d.appendChild(micBtn); d.appendChild(rmBtn);
   return d;
 }
@@ -396,7 +427,8 @@ function resetForm(){
   document.querySelectorAll('.trend-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('status-msg').className='status';
   updateTotal();addMeal();
-  const now=new Date();document.getElementById('date').value=now.toISOString().slice(0,10);
+  const now=new Date();const yyyy=now.getFullYear(),mo=String(now.getMonth()+1).padStart(2,'0'),dd=String(now.getDate()).padStart(2,'0');
+  document.getElementById('date').value=yyyy+'-'+mo+'-'+dd;
   const hh=String(now.getHours()).padStart(2,'0'),mm=String(now.getMinutes()).padStart(2,'0');
   document.getElementById('time').value=hh+':'+mm;updateSlowTime();
 }
@@ -771,7 +803,7 @@ function startVoice(id){
     const text=e.results[0][0].transcript;
     const inp=document.getElementById('meal-name-'+id);
     inp.value=text;
-    updateMeal(id,'name',text);
+    inp.dispatchEvent(new Event('input'));
   };
   rec.onerror=e=>{
     console.error('Speech error',e.error);
