@@ -39,6 +39,12 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="time"]::-webki
 .trend-btn{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;padding:8px 4px;text-align:center;color:var(--muted);transition:all .15s;font-family:'DM Sans',sans-serif}
 .trend-btn:hover{border-color:var(--border2);color:var(--text)}
 .trend-btn.active{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent)}
+.trend-btn[data-val="Stable"] .arr{color:var(--green)}
+.trend-btn[data-val="Baisse"] .arr,.trend-btn[data-val="Hausse"] .arr{color:var(--amber)}
+.trend-btn[data-val="Forte Baisse"] .arr,.trend-btn[data-val="Forte Hausse"] .arr{color:var(--red)}
+.trend-btn[data-val="Stable"].active{background:var(--green-soft);border-color:rgba(62,207,142,.35);color:var(--green)}
+.trend-btn[data-val="Baisse"].active,.trend-btn[data-val="Hausse"].active{background:var(--amber-soft);border-color:rgba(247,178,79,.35);color:var(--amber)}
+.trend-btn[data-val="Forte Baisse"].active,.trend-btn[data-val="Forte Hausse"].active{background:var(--red-soft);border-color:rgba(247,111,111,.35);color:var(--red)}
 .trend-btn .arr{font-size:20px;line-height:1.2;display:block}
 .trend-btn .lbl{font-size:10px;display:block;margin-top:2px}
 .meal-header span{font-size:11px;color:var(--hint)}
