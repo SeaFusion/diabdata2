@@ -11,7 +11,7 @@ const FOODS_DB = [
   ['tortilla ble',52],['tortilla mais',50],['pain burger',48],['pain hotdog',47],
 
   // --- Riz ---
-  ['riz blanc cuit',28],['riz blanc cru',79],['riz complet cuit',23],['riz complet cru',76],
+  ['riz blanc cuit',28],['riz blanc cru',79],['riz complet cuit',31],['riz complet cru',76],
   ['riz basmati cuit',25],['riz jasmin cuit',28],['riz rond cuit',27],
   ['riz sauvage cuit',21],['risotto',26],['riz cantonais',32],
 

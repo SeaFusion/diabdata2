@@ -55,8 +55,8 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="time"]::-webki
 .mic-btn:hover{border-color:var(--accent-border);color:var(--accent)}
 .mic-btn.recording{background:var(--red-soft);border-color:rgba(247,111,111,.5);color:var(--red);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-.meal-item{display:grid;grid-template-columns:1fr 90px 32px 32px;gap:8px;align-items:start;margin-bottom:6px}
-.meal-header{display:grid;grid-template-columns:1fr 90px 32px 32px;gap:8px;margin-bottom:4px}
+.meal-item{display:grid;grid-template-columns:1fr 32px 32px;gap:8px;align-items:start;margin-bottom:6px}
+.meal-header{display:grid;grid-template-columns:1fr 32px 32px;gap:8px;margin-bottom:4px}
 .add-meal-btn{width:100%;background:transparent;border:1px dashed var(--border2);border-radius:var(--radius);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;margin-top:2px}
 .add-meal-btn:hover{background:var(--surface2);color:var(--text);border-style:solid}
 .total-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:var(--radius);padding:.75rem 1rem;margin-top:.75rem;border:1px solid var(--border)}
@@ -135,6 +135,21 @@ tr:hover td{background:var(--surface2)}
 .meal-name{font-size:12px;color:var(--text);line-height:1.35}
 .meal-unit{font-family:'DM Mono',monospace;font-size:12px;color:var(--amber);white-space:nowrap}
 .carb-hint{font-size:10px;min-height:13px;line-height:1.4;white-space:normal;color:var(--hint)}
+/* Wizard */
+.wizard-progress{display:flex;align-items:center;gap:12px;margin-bottom:1.25rem}
+.wizard-steps{display:flex;gap:4px;flex:1}
+.wizard-step-dot{flex:1;height:3px;border-radius:2px;background:var(--surface2);transition:background .3s}
+.wizard-step-dot.done{background:var(--accent)}
+.wizard-step-dot.active{background:var(--accent-border)}
+.wizard-label{font-size:12px;color:var(--muted);white-space:nowrap;flex-shrink:0}
+.step-panel{display:none}
+.step-panel.active{display:block}
+.step-nav{display:flex;gap:10px;margin-bottom:1rem}
+.step-back-btn{background:transparent;border:1px solid var(--border2);border-radius:var(--radius);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;padding:.75rem 1.1rem;cursor:pointer;transition:all .15s;flex-shrink:0}
+.step-back-btn:hover{background:var(--surface2);color:var(--text)}
+.step-next-btn{background:var(--accent);border:none;border-radius:var(--radius);color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;padding:.75rem 1.5rem;cursor:pointer;transition:opacity .2s,transform .1s;margin-left:auto}
+.step-next-btn:hover{opacity:.9}
+.step-next-btn:active{transform:scale(.99)}
 @media(max-width:480px){.row{grid-template-columns:1fr}.trend-btn .lbl{display:none}.stat-grid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
@@ -152,95 +167,148 @@ tr:hover td{background:var(--surface2)}
 
   <!-- SAISIE -->
   <div class="tab-panel active" id="tab-saisie">
-    <div class="card">
-      <div class="card-title"><span class="dot"></span> Date & heure</div>
-      <div class="row">
-        <div class="field"><label>Date</label><input type="date" id="date"></div>
-        <div class="field"><label>Heure</label><input type="time" id="time" oninput="updateSlowTime()"></div>
+    <!-- Wizard Progress -->
+    <div class="wizard-progress">
+      <div class="wizard-steps" id="wizard-dots"></div>
+      <span class="wizard-label" id="wizard-label">Étape 1 / 7</span>
+    </div>
+
+    <!-- Étape 1 : Date & Heure -->
+    <div class="step-panel active" id="step-1">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Date & heure</div>
+        <div class="row">
+          <div class="field"><label>Date</label><input type="date" id="date"></div>
+          <div class="field"><label>Heure</label><input type="time" id="time" oninput="updateSlowTime()"></div>
+        </div>
+      </div>
+      <div class="step-nav">
+        <button class="step-next-btn" onclick="goStep(2)">Suivant →</button>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-title"><span class="dot"></span> Glycémie</div>
-      <div class="row">
-        <div class="field">
-          <label>Valeur (mg/dL)</label>
-          <input type="number" id="glycemie" placeholder="ex : 120" min="20" max="600">
-        </div>
-        <div class="field">
-          <label>Tendance</label>
-          <div class="trend-grid">
-            <button class="trend-btn" data-val="Forte Baisse" onclick="selectTrend(this)"><span class="arr">↓↓</span><span class="lbl">Forte baisse</span></button>
-            <button class="trend-btn" data-val="Baisse" onclick="selectTrend(this)"><span class="arr">↓</span><span class="lbl">Baisse</span></button>
-            <button class="trend-btn" data-val="Stable" onclick="selectTrend(this)"><span class="arr">→</span><span class="lbl">Stable</span></button>
-            <button class="trend-btn" data-val="Hausse" onclick="selectTrend(this)"><span class="arr">↑</span><span class="lbl">Hausse</span></button>
-            <button class="trend-btn" data-val="Forte Hausse" onclick="selectTrend(this)"><span class="arr">↑↑</span><span class="lbl">Forte hausse</span></button>
+    <!-- Étape 2 : Glycémie -->
+    <div class="step-panel" id="step-2">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Glycémie</div>
+        <div class="row">
+          <div class="field">
+            <label>Valeur (mg/dL)</label>
+            <input type="number" id="glycemie" placeholder="ex : 120" min="20" max="600">
+          </div>
+          <div class="field">
+            <label>Tendance</label>
+            <div class="trend-grid">
+              <button class="trend-btn" data-val="Forte Baisse" onclick="selectTrend(this)"><span class="arr">↓↓</span><span class="lbl">Forte baisse</span></button>
+              <button class="trend-btn" data-val="Baisse" onclick="selectTrend(this)"><span class="arr">↓</span><span class="lbl">Baisse</span></button>
+              <button class="trend-btn" data-val="Stable" onclick="selectTrend(this)"><span class="arr">→</span><span class="lbl">Stable</span></button>
+              <button class="trend-btn" data-val="Hausse" onclick="selectTrend(this)"><span class="arr">↑</span><span class="lbl">Hausse</span></button>
+              <button class="trend-btn" data-val="Forte Hausse" onclick="selectTrend(this)"><span class="arr">↑↑</span><span class="lbl">Forte hausse</span></button>
+            </div>
           </div>
         </div>
       </div>
+      <div class="step-nav">
+        <button class="step-back-btn" onclick="goStep(1)">← Retour</button>
+        <button class="step-next-btn" onclick="goStep(3)">Suivant →</button>
+      </div>
     </div>
 
-    <div class="card">
-      <div class="card-title"><span class="dot"></span> Repas & insuline rapide</div>
-      <div class="meal-header"><span>Aliment</span><span>Insuline (U)</span><span></span><span></span></div>
-      <div id="meal-list"></div>
-      <button class="add-meal-btn" onclick="addMeal()">+ Ajouter un aliment</button>
-      <div class="sep"></div>
-      <div class="row">
-        <div class="field">
-          <label>Bonus / Malus insuline</label>
-          <input type="text" id="bonus" placeholder="ex : +6 ou -3" oninput="updateTotal()">
+    <!-- Étape 3 : Repas & insuline rapide -->
+    <div class="step-panel" id="step-3">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Repas & insuline rapide</div>
+        <div class="meal-header"><span>Aliment</span><span></span><span></span></div>
+        <div id="meal-list"></div>
+        <button class="add-meal-btn" onclick="addMeal()">+ Ajouter un aliment</button>
+        <div class="sep"></div>
+        <div class="row">
+          <div class="field">
+            <label>Bonus / Malus insuline</label>
+            <input type="text" id="bonus" placeholder="ex : +6 ou -3" oninput="updateTotal()">
+          </div>
+          <div></div>
         </div>
-        <div></div>
-      </div>
-      <div class="total-row">
-        <span class="total-label">⟨/⟩ Total insuline rapide</span>
-        <span class="total-val" id="total-insulin">0 U</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><span class="dot"></span> Insuline lente <span class="badge">🌙 1× / jour — soir</span></div>
-      <div class="toggle-row" onclick="toggleSlow()">
-        <span class="toggle-label">Prise d'insuline lente ce soir</span>
-        <div class="toggle" id="slow-toggle"></div>
-      </div>
-      <div class="slow-panel" id="slow-panel">
-        <span class="syringe">💉</span>
-        <div class="field">
-          <label>Dose (unités)</label>
-          <input type="number" id="insuline-lente" placeholder="ex : 20" min="0" step="1">
+        <div class="total-row">
+          <span class="total-label">⟨/⟩ Total insuline rapide</span>
+          <span class="total-val" id="total-insulin">0 U</span>
         </div>
-        <div class="slow-time">Heure d'injection<strong id="slow-time-display">—</strong></div>
+      </div>
+      <div class="step-nav">
+        <button class="step-back-btn" onclick="goStep(2)">← Retour</button>
+        <button class="step-next-btn" onclick="goStep(4)">Suivant →</button>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-title"><span class="dot"></span> Activité physique</div>
-      <div style="display:flex;gap:8px;align-items:flex-start">
-        <div class="field" style="flex:1"><input type="text" id="activite" placeholder="ex : 30 min de vélo, marche 1h…"></div>
-        <button class="mic-btn" id="mic-activite" onclick="startVoiceField('activite','mic-activite')" title="Dicter" style="margin-top:0;height:38px;width:38px">🎤</button>
+    <!-- Étape 4 : Insuline lente -->
+    <div class="step-panel" id="step-4">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Insuline lente <span class="badge">🌙 1× / jour — soir</span></div>
+        <div class="toggle-row" onclick="toggleSlow()">
+          <span class="toggle-label">Prise d'insuline lente ?</span>
+          <div class="toggle" id="slow-toggle"></div>
+        </div>
+        <div class="slow-panel" id="slow-panel">
+          <span class="syringe">💉</span>
+          <div class="field">
+            <label>Dose (unités)</label>
+            <input type="number" id="insuline-lente" placeholder="ex : 20" min="0" step="1">
+          </div>
+          <div class="slow-time">Heure d'injection<strong id="slow-time-display">—</strong></div>
+        </div>
+      </div>
+      <div class="step-nav">
+        <button class="step-back-btn" onclick="goStep(3)">← Retour</button>
+        <button class="step-next-btn" onclick="goStep(5)">Suivant →</button>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-title"><span class="dot"></span> Notes libres</div>
-      <div style="display:flex;gap:8px;align-items:flex-start">
-        <div class="field" style="flex:1"><textarea id="notes" placeholder="Observations, contexte, ressenti…"></textarea></div>
-        <button class="mic-btn" id="mic-notes" onclick="startVoiceField('notes','mic-notes')" title="Dicter" style="height:38px;width:38px">🎤</button>
+    <!-- Étape 5 : Activité physique -->
+    <div class="step-panel" id="step-5">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Activité physique</div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <div class="field" style="flex:1"><input type="text" id="activite" placeholder="ex : 30 min de vélo, marche 1h…"></div>
+          <button class="mic-btn" id="mic-activite" onclick="startVoiceField('activite','mic-activite')" title="Dicter" style="margin-top:0;height:38px;width:38px">🎤</button>
+        </div>
+      </div>
+      <div class="step-nav">
+        <button class="step-back-btn" onclick="goStep(4)">← Retour</button>
+        <button class="step-next-btn" onclick="goStep(6)">Suivant →</button>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-title"><span class="dot"></span> Google Sheets</div>
-      <div class="field" style="margin-bottom:.85rem">
-        <label>URL du Apps Script (envoi)</label>
-        <input type="url" id="webhook-url" placeholder="https://script.google.com/macros/s/…/exec">
-        <p class="hint">Pour tester sans Sheet : <a class="hint-link" href="https://webhook.site" target="_blank">webhook.site</a></p>
+    <!-- Étape 6 : Notes libres -->
+    <div class="step-panel" id="step-6">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Notes libres</div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <div class="field" style="flex:1"><textarea id="notes" placeholder="Observations, contexte, ressenti…"></textarea></div>
+          <button class="mic-btn" id="mic-notes" onclick="startVoiceField('notes','mic-notes')" title="Dicter" style="height:38px;width:38px">🎤</button>
+        </div>
       </div>
-      <div id="status-msg" class="status"></div>
-      <button class="submit-btn" id="submit-btn" onclick="submitData()">↗ Enregistrer dans Google Sheets</button>
-      <button class="reset-btn" onclick="resetForm()">Réinitialiser le formulaire</button>
+      <div class="step-nav">
+        <button class="step-back-btn" onclick="goStep(5)">← Retour</button>
+        <button class="step-next-btn" onclick="goStep(7)">Suivant →</button>
+      </div>
+    </div>
+
+    <!-- Étape 7 : Google Sheets -->
+    <div class="step-panel" id="step-7">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Google Sheets</div>
+        <div class="field" style="margin-bottom:.85rem">
+          <label>URL du Apps Script (envoi)</label>
+          <input type="url" id="webhook-url" placeholder="https://script.google.com/macros/s/…/exec">
+          <p class="hint">Pour tester sans Sheet : <a class="hint-link" href="https://webhook.site" target="_blank">webhook.site</a></p>
+        </div>
+        <div id="status-msg" class="status"></div>
+        <button class="submit-btn" id="submit-btn" onclick="submitData()">↗ Enregistrer dans Google Sheets</button>
+        <button class="reset-btn" onclick="resetForm()">Réinitialiser le formulaire</button>
+      </div>
+      <div class="step-nav">
+        <button class="step-back-btn" onclick="goStep(6)">← Retour</button>
+      </div>
     </div>
   </div>
 
@@ -301,6 +369,7 @@ function init() {
   document.getElementById('time').value=hh+':'+mm;
   updateSlowTime(); addMeal();
   document.getElementById('webhook-url').value=localStorage.getItem('diabetes-webhook')||WEBHOOK_POST;
+  updateWizardProgress();
 }
 
 function updateSlowTime(){document.getElementById('slow-time-display').textContent=document.getElementById('time').value||'—'}
@@ -330,15 +399,44 @@ function createMealRow(m){
   nameInput.id='meal-name-'+m.id; nameInput.value=m.name;
   const carbHint=document.createElement('span');
   carbHint.className='carb-hint';
+
+  let carbsPer100=null;
+  function recalcInsulin(){
+    const g=parseFloat(grmInput.value);
+    if(carbsPer100!==null && g>0){
+      const units=Math.round(carbsPer100*g/100/8);
+      insInput.value=units;
+      updateMeal(m.id,'insulin',units);
+      updateTotal();
+    }
+  }
+
   nameInput.oninput=()=>{
     updateMeal(m.id,'name',nameInput.value);
     const q=nameInput.value.trim();
     if(q.length>=2){
       const match=lookupCarbs(q);
-      if(match){const ins=Math.round(match[1]/8*10)/10;carbHint.textContent='\uD83C\uDF3E '+match[1]+'g gluc./100g \u2192 ~'+ins+'U';carbHint.style.color='var(--amber)';}
-      else{carbHint.textContent='glucides inconnus';carbHint.style.color='var(--hint)';}
-    } else {carbHint.textContent='';}
+      if(match){
+        carbsPer100=match[1];
+        const ins=Math.round(match[1]/8*10)/10;
+        carbHint.textContent='\uD83C\uDF3E '+match[1]+'g gluc./100g \u2192 ~'+ins+'U';
+        carbHint.style.color='var(--amber)';
+        recalcInsulin();
+      } else {
+        carbsPer100=null;
+        carbHint.textContent='glucides inconnus';
+        carbHint.style.color='var(--hint)';
+      }
+    } else {carbsPer100=null;carbHint.textContent='';}
   };
+
+  const grmLabel=document.createElement('label');
+  grmLabel.textContent='Grammes';
+  grmLabel.style.cssText='font-size:12px;color:var(--muted);font-weight:500;margin-top:6px';
+  const grmInput=document.createElement('input');
+  grmInput.type='number'; grmInput.placeholder='0'; grmInput.min='0'; grmInput.step='1';
+  grmInput.id='meal-grm-'+m.id; grmInput.value=m.grammes||'';
+  grmInput.oninput=()=>{updateMeal(m.id,'grammes',grmInput.value);recalcInsulin();};
 
   const insInput=document.createElement('input');
   insInput.type='number'; insInput.placeholder='0'; insInput.min='0'; insInput.step='1';
@@ -355,17 +453,25 @@ function createMealRow(m){
   rmBtn.className='rm-btn'; rmBtn.textContent='✕';
   rmBtn.onclick=()=>removeMeal(m.id);
 
+  const insLabel=document.createElement('label');
+  insLabel.textContent='Insuline (U)';
+  insLabel.style.cssText='font-size:12px;color:var(--muted);font-weight:500;margin-top:6px';
+
   const nameWrapper=document.createElement('div');
   nameWrapper.style.cssText='display:flex;flex-direction:column;gap:2px;min-width:0';
   nameWrapper.appendChild(nameInput);
   nameWrapper.appendChild(carbHint);
-  d.appendChild(nameWrapper); d.appendChild(insInput);
+  nameWrapper.appendChild(grmLabel);
+  nameWrapper.appendChild(grmInput);
+  nameWrapper.appendChild(insLabel);
+  nameWrapper.appendChild(insInput);
+  d.appendChild(nameWrapper);
   d.appendChild(micBtn); d.appendChild(rmBtn);
   return d;
 }
 
 function addMeal(){
-  const m={id:Date.now(),name:'',insulin:''};
+  const m={id:Date.now(),name:'',grammes:'',insulin:''};
   meals.push(m);
   document.getElementById('meal-list').appendChild(createMealRow(m));
   updateTotal();
@@ -401,7 +507,7 @@ function collectData(){
     heure: document.getElementById('time').value,
     glycemie: document.getElementById('glycemie').value,
     tendance: selectedTrend,
-    repas: meals.filter(m=>m.name).map(m=>`${m.name}: ${m.insulin||0}U`).join(' | '),
+    repas: meals.filter(m=>m.name).map(m=>`${m.name}${m.grammes?' ('+m.grammes+'g)':''}: ${m.insulin||0}U`).join(' | '),
     bonus: bonusRaw,
     total_insuline: Math.round((s+b)*10)/10,
     insuline_lente: lente,
@@ -432,11 +538,13 @@ function resetForm(){
   ['glycemie','bonus','activite','notes','insuline-lente'].forEach(id=>document.getElementById(id).value='');
   document.querySelectorAll('.trend-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('status-msg').className='status';
+  document.getElementById('meal-list').innerHTML='';
   updateTotal();addMeal();
   const now=new Date();const yyyy=now.getFullYear(),mo=String(now.getMonth()+1).padStart(2,'0'),dd=String(now.getDate()).padStart(2,'0');
   document.getElementById('date').value=yyyy+'-'+mo+'-'+dd;
   const hh=String(now.getHours()).padStart(2,'0'),mm=String(now.getMinutes()).padStart(2,'0');
   document.getElementById('time').value=hh+':'+mm;updateSlowTime();
+  goStep(1);
 }
 
 /* === RAPPORT === */
@@ -819,6 +927,30 @@ function startVoice(id){
     btn.classList.remove('recording');btn.textContent='🎤';activeRecognition=null;
   };
   rec.start();
+}
+
+let currentStep=1;
+const TOTAL_STEPS=7;
+
+function goStep(n){
+  document.getElementById('step-'+currentStep).classList.remove('active');
+  currentStep=n;
+  document.getElementById('step-'+currentStep).classList.add('active');
+  updateWizardProgress();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function updateWizardProgress(){
+  const dots=document.getElementById('wizard-dots');
+  if(!dots) return;
+  dots.innerHTML='';
+  for(let i=1;i<=TOTAL_STEPS;i++){
+    const dot=document.createElement('div');
+    dot.className='wizard-step-dot'+(i<currentStep?' done':i===currentStep?' active':'');
+    dots.appendChild(dot);
+  }
+  const lbl=document.getElementById('wizard-label');
+  if(lbl) lbl.textContent='Étape '+currentStep+' / '+TOTAL_STEPS;
 }
 
 init();
